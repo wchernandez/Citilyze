@@ -6,6 +6,9 @@ import { getStabilityScore, getIntegrityScore, getActiveAlerts, getTrendData } f
 import ScoreCard from '../../components/ScoreCard';
 import RiskAlertCard from '../../components/RiskAlertCard';
 import TrendChart from '../../components/TrendChart';
+import type { InfrastructureRisk } from '../../data/mockData';
+import { infrastructureRisks } from '../../data/mockData';
+import HeatmapClient from './components/HeatmapClient';
 
 export default function DashboardPage() {
   const stability = getStabilityScore();
@@ -36,6 +39,12 @@ export default function DashboardPage() {
       <section>
         <h2 className="text-lg font-semibold mb-3">Stability Over Time</h2>
         <TrendChart data={trend} />
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold mb-3">Infrastructure Risk Heatmap</h2>
+        {/* pass mock data for now; in real app this could come from an API call */}
+        <HeatmapClient data={infrastructureRisks as InfrastructureRisk[]} zoom={14} />
       </section>
     </div>
   );

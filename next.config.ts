@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   },
 
   // Production build optimizations
-  swcMinify: true,
+  // swcMinify is no longer recognized by Next.js 16+; leave defaults
   productionBrowserSourceMaps: false,
 
   // Strict mode for development

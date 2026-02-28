@@ -27,3 +27,43 @@ export const stabilityTrend: TrendPoint[] = [
   { date: '2026-02-15', value: 72 },
   { date: '2026-03-01', value: 72 },
 ];
+
+// mock infrastructure risk points for heatmap demo
+export interface InfrastructureRisk {
+  location: string;
+  lat: number;
+  lng: number;
+  score: number; // 0-100
+  category: string;
+}
+
+export const infrastructureRisks: InfrastructureRisk[] = [
+  {
+    location: 'Central Power Plant',
+    lat: 40.7128,
+    lng: -74.0060,
+    score: 85,
+    category: 'Energy',
+  },
+  {
+    location: 'River Bridge A',
+    lat: 40.7138,
+    lng: -74.0010,
+    score: 60,
+    category: 'Transportation',
+  },
+  {
+    location: 'Downtown Waterworks',
+    lat: 40.7100,
+    lng: -74.0050,
+    score: 45,
+    category: 'Water',
+  },
+  {
+    location: 'Westside Data Center',
+    lat: 40.7150,
+    lng: -74.0025,
+    score: 30,
+    category: 'Communications',
+  },
+];

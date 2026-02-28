@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import Link from 'next/link';
+import { countries as countryData } from '../data/countries';
 
 interface Props {
   children: ReactNode;
@@ -9,6 +10,14 @@ interface Props {
 
 export default function ClientLayout({ children }: Props) {
   const [darkMode, setDarkMode] = useState(false);
+  // search state for location filtering - could be lifted later
+  const [country, setCountry] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
+  const [city, setCity] = useState('');
+  const [showCountrySuggestions, setShowCountrySuggestions] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('theme');
@@ -21,6 +30,19 @@ export default function ClientLayout({ children }: Props) {
     } else {
       document.documentElement.classList.remove('dark');
     }
+  }, []);
+
+  // close suggestion lists when clicking outside
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!wrapperRef.current) return;
+      if (!wrapperRef.current.contains(e.target as Node)) {
+        setShowCountrySuggestions(false);
+        setShowCitySuggestions(false);
+      }
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
   }, []);
 
   const toggleDark = () => {
@@ -85,6 +107,87 @@ export default function ClientLayout({ children }: Props) {
       <div className="flex-1 flex flex-col">
         <header className="h-16 flex items-center justify-between px-6 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <h1 className="text-lg font-semibold">Citilyze</h1>
+
+          {/* search inputs for country / city at top */}
+          <div ref={wrapperRef} className="relative flex items-center space-x-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setSelectedCountry(null);
+                  setShowCountrySuggestions(true);
+                  // hide city suggestions when country changes
+                  setShowCitySuggestions(false);
+                  setCity('');
+                }}
+                onFocus={() => setShowCountrySuggestions(true)}
+                placeholder="Country"
+                className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm w-48"
+              />
+
+              {showCountrySuggestions && country.trim().length > 0 && (
+                <ul className="absolute z-50 mt-1 w-48 max-h-48 overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow">
+                  {countryData
+                    .filter((c) => c.name.toLowerCase().includes(country.toLowerCase()))
+                    .slice(0, 8)
+                    .map((c) => (
+                      <li
+                        key={c.name}
+                        onClick={() => {
+                          setCountry(c.name);
+                          setSelectedCountry(c.name);
+                          setShowCountrySuggestions(false);
+                          setShowCitySuggestions(false);
+                          setCity('');
+                        }}
+                        className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm"
+                      >
+                        {c.name}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  setShowCitySuggestions(true);
+                }}
+                onFocus={() => setShowCitySuggestions(true)}
+                placeholder="City"
+                className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm w-48"
+              />
+
+              {showCitySuggestions && selectedCountry && (
+                <ul className="absolute z-50 mt-1 w-48 max-h-48 overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow">
+                  {(
+                    countryData.find((c) => c.name === selectedCountry)?.cities || []
+                  )
+                    .filter((ct) => ct.toLowerCase().includes(city.toLowerCase()))
+                    .slice(0, 10)
+                    .map((ct) => (
+                      <li
+                        key={ct}
+                        onClick={() => {
+                          setCity(ct);
+                          setShowCitySuggestions(false);
+                        }}
+                        className="px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-sm"
+                      >
+                        {ct}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
           <button
             onClick={toggleDark}
             className="px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
