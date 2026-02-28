@@ -1,3 +1,7 @@
+/**
+ * Dashboard page - displays key stability metrics.
+ */
+
 import { getStabilityScore, getIntegrityScore, getActiveAlerts, getTrendData } from '../../lib/dashboard';
 import ScoreCard from '../../components/ScoreCard';
 import RiskAlertCard from '../../components/RiskAlertCard';
@@ -17,18 +21,23 @@ export default function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Active Risk Alerts</h2>
-        <div className="space-y-2">
-          {alerts.map((a) => (
-            <RiskAlertCard key={a.id} message={a.message} level={a.level} />
-          ))}
-        </div>
+        <h2 className="text-lg font-semibold mb-3">Active Risk Alerts</h2>
+        {alerts.length === 0 ? (
+          <p className="text-gray-500">No active alerts</p>
+        ) : (
+          <div className="space-y-2">
+            {alerts.map((a) => (
+              <RiskAlertCard key={a.id} message={a.message} level={a.level} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Stability Over Time</h2>
+        <h2 className="text-lg font-semibold mb-3">Stability Over Time</h2>
         <TrendChart data={trend} />
       </section>
     </div>
   );
 }
+

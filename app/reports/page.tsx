@@ -1,72 +1,106 @@
 'use client';
 
+/**
+ * Reports page - generates and exports summary reports.
+ */
+
 import { useRef } from 'react';
-import { stabilityScore, integrityScore, activeAlerts } from '../../data/mockData';
-import { procurementAnomalies } from '../../data/analyticsMock';
-import TrendChart from '../../components/TrendChart';
+import { dashboardScores, dashboardAlerts, procurementAnomalies } from '../../data';
+import { formatNumber } from '../../lib/utils';
 
 export default function ReportsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const exportPdf = () => {
-    // simple print-based PDF export
+    // Client-side print-based PDF export
     window.print();
   };
 
   return (
     <div className="space-y-6" ref={containerRef}>
       <section>
-        <h2 className="text-lg font-semibold mb-2">Current Scores</h2>
-        <ul className="list-disc list-inside">
-          <li>Urban Stability: {stabilityScore}</li>
-          <li>Institutional Integrity: {integrityScore}</li>
+        <h1 className="text-2xl font-bold mb-4">Urban Stability Report</h1>
+        <p className="text-sm text-gray-500">Generated: {new Date().toLocaleDateString()}</p>
+      </section>
+
+      <section>
+        <h2 className="text-xl font-semibold mb-3">Current Scores</h2>
+        <ul className="list-disc list-inside space-y-1">
+          <li>
+            <strong>Urban Stability Index:</strong> {dashboardScores.stability}/100
+          </li>
+          <li>
+            <strong>Institutional Integrity Index:</strong> {dashboardScores.integrity}/100
+          </li>
         </ul>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Risk Analysis</h2>
-        <ul className="list-disc list-inside">
-          {activeAlerts.map((a) => (
-            <li key={a.id}>
-              <strong>{a.level.toUpperCase()}</strong> – {a.message}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold mb-2">Detected Anomalies</h2>
-        <table className="w-full bg-white dark:bg-gray-800 shadow rounded">
-          <thead>
-            <tr className="text-left">
-              <th className="px-4 py-2">ID</th>
-              <th className="px-4 py-2">Item</th>
-              <th className="px-4 py-2">Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {procurementAnomalies.map((a) => (
-              <tr key={a.id} className="border-t border-gray-200 dark:border-gray-700">
-                <td className="px-4 py-2">{a.id}</td>
-                <td className="px-4 py-2">{a.item}</td>
-                <td className="px-4 py-2">{a.score.toFixed(1)}</td>
-              </tr>
+        <h2 className="text-xl font-semibold mb-3">Risk Analysis</h2>
+        {dashboardAlerts.length === 0 ? (
+          <p className="text-gray-500">No active alerts</p>
+        ) : (
+          <ul className="list-disc list-inside space-y-2">
+            {dashboardAlerts.map((a) => (
+              <li key={a.id}>
+                <strong>[{a.level.toUpperCase()}]</strong> – {a.message}
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        )}
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold mb-2">Forecast Summary</h2>
-        <p>Based on current trends, stability is expected to remain around {stabilityScore} for the next quarter.</p>
+        <h2 className="text-xl font-semibold mb-3">Detected Anomalies</h2>
+        {procurementAnomalies.length === 0 ? (
+          <p className="text-gray-500">No anomalies detected</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-300">
+                  <th className="text-left py-2 px-2">ID</th>
+                  <th className="text-left py-2 px-2">Item</th>
+                  <th className="text-right py-2 px-2">Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {procurementAnomalies.map((a) => (
+                  <tr key={a.id} className="border-b border-gray-200">
+                    <td className="py-2 px-2">{a.id}</td>
+                    <td className="py-2 px-2">{a.item}</td>
+                    <td className="text-right py-2 px-2 font-mono">
+                      {a.score.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
-      <button
-        onClick={exportPdf}
-        className="mt-4 px-4 py-2 bg-green-600 text-white rounded"
-      >
-        Export as PDF
-      </button>
+      <section>
+        <h2 className="text-xl font-semibold mb-3">Forecast Summary</h2>
+        <p>
+          Based on current trends and parameters, the Urban Stability Index is projected to remain
+          stable around <strong>{dashboardScores.stability}</strong> for the next quarter.
+        </p>
+        <p className="mt-2 text-sm text-gray-600">
+          Continued investment in infrastructure and governance improvements will be critical to
+          maintain and improve stability metrics.
+        </p>
+      </section>
+
+      <div className="pt-4 text-sm text-gray-600">
+        <button
+          onClick={exportPdf}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-medium transition-colors"
+        >
+          Export as PDF
+        </button>
+      </div>
     </div>
   );
 }
+

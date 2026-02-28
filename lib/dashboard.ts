@@ -1,25 +1,28 @@
+/**
+ * Dashboard data logic.
+ * Fetches and transforms data for dashboard display.
+ */
+
 import {
-  stabilityScore,
-  integrityScore,
-  activeAlerts,
+  dashboardScores,
+  dashboardAlerts,
   stabilityTrend,
-  Alert,
-  TrendPoint,
-} from '../data/mockData';
+} from '../data';
+import type { Alert, TrendPoint } from '../types';
 
 export function getStabilityScore(): number {
-  // Placeholder for more complex logic
-  return stabilityScore;
+  return dashboardScores.stability;
 }
 
 export function getIntegrityScore(): number {
-  return integrityScore;
+  return dashboardScores.integrity;
 }
 
 export function getActiveAlerts(): Alert[] {
-  return activeAlerts;
+  return dashboardAlerts;
 }
 
 export function getTrendData(): TrendPoint[] {
   return stabilityTrend;
 }
+

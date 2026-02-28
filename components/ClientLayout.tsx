@@ -44,33 +44,39 @@ export default function ClientLayout({ children }: Props) {
         <nav className="flex flex-col p-4 space-y-2">
           <Link
             href="/dashboard"
-            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Dashboard
           </Link>
           <Link
             href="/analytics"
-            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Analytics
           </Link>
           <Link
             href="/simulation"
-            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Simulation
           </Link>
           <Link
             href="/reports"
-            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Reports
           </Link>
           <Link
             href="/methodology"
-            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
           >
             Methodology
+          </Link>
+          <Link
+            href="/about"
+            className="px-3 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          >
+            About
           </Link>
         </nav>
       </aside>

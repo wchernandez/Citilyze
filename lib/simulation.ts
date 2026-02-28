@@ -1,13 +1,13 @@
-export interface SimulationInputs {
-  infrastructure: number; // 0-100
-  governance: number; // 0-100
-  transparency: number; // 0-100
-  emergencyResponse: number; // 0-100
-}
+/**
+ * Simulation logic for stability score calculations.
+ */
+
+import type { SimulationInputs } from '../types';
+import { clamp } from './utils';
 
 /**
- * Compute stability score from components using provided weights.
- * Input values are expected 0-100 and result will also be 0-100.
+ * Compute stability score from simulation inputs.
+ * Uses weighted formula: 0.35*infrastructure + 0.25*governance + 0.2*transparency + 0.2*emergency_response
  */
 export function computeStability(inputs: SimulationInputs): number {
   const {
@@ -23,6 +23,6 @@ export function computeStability(inputs: SimulationInputs): number {
     0.2 * transparency +
     0.2 * emergencyResponse;
 
-  // clamp to 0-100
-  return Math.max(0, Math.min(100, stability));
+  return clamp(stability, 0, 100);
 }
+
