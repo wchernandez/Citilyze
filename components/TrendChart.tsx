@@ -12,14 +12,20 @@ import {
 
 export interface TrendPoint {
   date: string;
-  value: number;
+  [key: string]: number | string;
 }
 
 interface TrendChartProps {
   data: TrendPoint[];
+  dataKey?: string; // defaults to value
+  strokeColor?: string;
 }
 
-export default function TrendChart({ data }: TrendChartProps) {
+export default function TrendChart({
+  data,
+  dataKey = 'value',
+  strokeColor = '#4caf50',
+}: TrendChartProps) {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded p-4 h-64">
       <ResponsiveContainer width="100%" height="100%">
@@ -28,7 +34,12 @@ export default function TrendChart({ data }: TrendChartProps) {
           <XAxis dataKey="date" tick={{ fill: '#888' }} />
           <YAxis tick={{ fill: '#888' }} />
           <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#4caf50" strokeWidth={2} />
+          <Line
+            type="monotone"
+            dataKey={dataKey}
+            stroke={strokeColor}
+            strokeWidth={2}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
