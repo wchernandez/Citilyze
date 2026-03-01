@@ -127,7 +127,7 @@ export default function ClientLayout({ children }: Props) {
   return (
     <div className="flex min-h-screen bg-white dark:bg-[#0f121b] text-gray-900 dark:text-slate-200 font-sans transition-colors duration-300">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 dark:bg-[#141b2a]/80 backdrop-blur-md border-r border-gray-200 dark:border-white/5 flex flex-col z-20 transition-colors duration-300">
+      <aside className="w-64 bg-gray-50 dark:bg-[#141b2a]/80 backdrop-blur-md border-r border-gray-200 dark:border-white/5 flex flex-col z-20 transition-colors duration-300 print:hidden">
         <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#141b2a]/40">
           <Shield className="w-8 h-8 text-blue-500 fill-blue-500/20" />
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white flex gap-1">
@@ -162,11 +162,20 @@ export default function ClientLayout({ children }: Props) {
       {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 bg-white dark:bg-[#141b2a]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 sticky top-0 z-[2000] transition-colors duration-300">
+        <header className="h-16 flex items-center justify-between px-6 bg-white dark:bg-[#141b2a]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 sticky top-0 z-[2000] transition-colors duration-300 print:hidden">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#1e293b] px-3 py-1.5 rounded-full border border-gray-200 dark:border-white/5 text-sm font-medium transition-colors">
+            <div className="flex items-center gap-2 px-1 text-sm font-medium transition-colors">
               <MapPin className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-              <span className="text-gray-700 dark:text-slate-200">{selectedCountry || city || 'Select Region'}</span>
+              <div className="flex items-center gap-1.5 group">
+                <span className="text-gray-400 dark:text-slate-500 text-[11px] uppercase tracking-widest font-bold">Selected City:</span>
+                <span className="text-gray-900 dark:text-white font-bold">{confirmedCity || 'UNINITIALIZED'}</span>
+                {selectedCountry && (
+                  <>
+                    <span className="text-gray-400 dark:text-slate-600">—</span>
+                    <span className="text-gray-500 dark:text-slate-500 italic font-normal">{selectedCountry}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -268,7 +277,7 @@ export default function ClientLayout({ children }: Props) {
           </div>
         </header>
 
-        <main className="p-6 flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-transparent transition-colors duration-300">
+        <main className="p-6 flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-transparent transition-colors duration-300 print:p-0">
           <LocationContext.Provider value={{ city: confirmedCity, country: selectedCountry || '' }}>
             {children}
           </LocationContext.Provider>

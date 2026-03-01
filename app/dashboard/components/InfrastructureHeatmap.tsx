@@ -4,10 +4,8 @@ import { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-// leaflet.heat registers itself on the L namespace when imported
 import 'leaflet.heat';
 
-// risk point coming from props or external source
 export interface RiskPoint {
   location: string;
   lat: number;
@@ -17,33 +15,46 @@ export interface RiskPoint {
 }
 
 interface HeatmapProps {
-  data?: RiskPoint[]; // optional: if omitted component could fetch itself
-  // allow custom center/zoom if needed
+  data?: RiskPoint[];
   center?: [number, number];
   zoom?: number;
 }
 
-// small helper for color; green low, red high
+/**
+ * Returns a vivid color based on risk score.
+ * Low score (40) = Cyan/Blue
+ * High score (100) = Red/Orange
+ */
 function scoreToColor(score: number) {
-  const hue = ((100 - score) * 120) / 100; // 0 = red, 120 = green
-  return `hsl(${hue},100%,50%)`;
+  if (score >= 90) return '#ef4444'; // Bright Red
+  if (score >= 70) return '#f97316'; // Orange
+  if (score >= 50) return '#eab308'; // Yellow
+  return '#06b6d4'; // Cyan
 }
 
-// component that adds the heat layer once the map is available
 function HeatLayer({ points }: { points: [number, number, number][] }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || points.length === 0) return;
+
+    // Create the heat layer with a vibrant classic gradient
     const heat = (L as any).heatLayer(points, {
-      radius: 25,
-      blur: 15,
-      maxZoom: 17,
-      gradient: { 0.0: 'blue', 0.5: 'lime', 1.0: 'red' },
+      radius: 35,
+      blur: 20,
+      maxZoom: 15,
+      max: 1.0,
+      gradient: {
+        0.2: 'blue',
+        0.4: 'cyan',
+        0.6: 'lime',
+        0.8: 'yellow',
+        1.0: 'red'
+      }
     }).addTo(map);
 
     return () => {
-      map.removeLayer(heat);
+      if (map) map.removeLayer(heat);
     };
   }, [map, points]);
 
@@ -51,65 +62,79 @@ function HeatLayer({ points }: { points: [number, number, number][] }) {
 }
 
 export default function InfrastructureHeatmap({ data = [], center, zoom = 13 }: HeatmapProps) {
-  // if no data is passed, attempt to fetch a local JSON file (mock)
-  useEffect(() => {
-    if (data.length === 0) {
-      fetch('/data/infrastructureRisks.json')
-        .then((res) => res.json())
-        .then((d) => {
-          // no-op; parent should supply data or replace this hook
-        })
-        .catch(() => {
-          /* ignore */
-        });
-    }
-  }, [data]);
-
   const heatPoints = data.map((d) => [d.lat, d.lng, d.score / 100] as [number, number, number]);
 
-  // default map center is mean of points or provided
   const defaultCenter: [number, number] =
     center ||
     (data.length
       ? [
-          data.reduce((s, p) => s + p.lat, 0) / data.length,
-          data.reduce((s, p) => s + p.lng, 0) / data.length,
-        ]
-      : [0, 0]);
+        data.reduce((s, p) => s + p.lat, 0) / data.length,
+        data.reduce((s, p) => s + p.lng, 0) / data.length,
+      ]
+      : [40.7128, -74.0060]);
 
   return (
-    <div className="h-96 w-full">
-      <MapContainer center={defaultCenter} zoom={zoom} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
+    <div className="h-full w-full bg-[#0f172a]">
+      <MapContainer
+        center={defaultCenter}
+        zoom={zoom}
+        scrollWheelZoom
+        style={{ height: '100%', width: '100%' }}
+        className="z-0"
+      >
+        {/* Brighter, more vibrant Voyager map tiles */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         />
 
         <HeatLayer points={heatPoints} />
 
         {data.map((d, i) => (
           <CircleMarker
-            key={i}
+            key={d.location + i}
             center={[d.lat, d.lng]}
-            radius={8}
+            radius={6}
             pathOptions={{
-              color: scoreToColor(d.score),
+              color: '#1e293b', // Darker border for contrast on brighter tiles
+              weight: 1.5,
               fillColor: scoreToColor(d.score),
-              fillOpacity: 0.6,
+              fillOpacity: 1.0, // Solid fill for max legibility
             }}
           >
-            <Tooltip direction="top" offset={[0, -5]} opacity={0.9} permanent={false}>
-              <div className="text-sm">
-                <strong>{d.location}</strong>
-                <br />
-                Score: {d.score}
-                <br />
-                Category: {d.category}
+            <Tooltip direction="top" offset={[0, -5]} opacity={1.0} className="custom-map-tooltip">
+              <div className="p-2 min-w-[150px] bg-slate-900 text-white border-none shadow-2xl rounded-lg">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-blue-400 mb-1">Municipal Node</div>
+                <div className="text-xs font-bold mb-1 leading-tight">{d.location}</div>
+                <div className="h-[1px] bg-white/10 my-2"></div>
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-gray-400">Category</span>
+                  <span className="text-white font-semibold">{d.category}</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] mt-1">
+                  <span className="text-gray-400">Risk Score</span>
+                  <span className={`font-bold ${d.score > 70 ? 'text-red-500' : 'text-cyan-400'}`}>{d.score}</span>
+                </div>
               </div>
             </Tooltip>
           </CircleMarker>
         ))}
       </MapContainer>
+
+      <style jsx global>{`
+        .leaflet-container {
+          background: #f8fafc !important;
+        }
+        .custom-map-tooltip {
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .custom-map-tooltip:before {
+          display: none !important;
+        }
+      `}</style>
     </div>
   );
 }
