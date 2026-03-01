@@ -1,25 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef, ReactNode, createContext } from 'react';
+import { useState, useEffect, useRef, useMemo, ReactNode, createContext, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, BarChart2, TrendingUp, FileText, BookOpen, Info, Search, MapPin, ChevronDown, Monitor } from 'lucide-react';
+import { Shield, LayoutDashboard, BarChart2, TrendingUp, FileText, BookOpen, Info, MapPin, Sun } from 'lucide-react';
+import { CitySearch } from './CitySearch';
+import { TimezoneSelector } from './TimezoneSelector';
 
 interface Props {
   children: ReactNode;
 }
 
-export const LocationContext = createContext({ city: '', country: '' });
+export const LocationContext = createContext({ city: '', country: '', timezone: '' });
 
 export default function ClientLayout({ children }: Props) {
   const pathname = usePathname();
   const [darkMode, setDarkMode] = useState(false);
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [showTzSelector, setShowTzSelector] = useState(false);
+  const [tzSearch, setTzSearch] = useState('');
 
-  // Real API driven state
+  // Location States
   const [allCountries, setAllCountries] = useState<string[]>([]);
   const [remoteCities, setRemoteCities] = useState<string[]>([]);
   const [isCityLoading, setIsCityLoading] = useState(false);
-
   const [country, setCountry] = useState('');
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [city, setCity] = useState('');
@@ -29,9 +33,9 @@ export default function ClientLayout({ children }: Props) {
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
+  // Initialize Theme
   useEffect(() => {
     const stored = localStorage.getItem('theme');
-    // Force dark mode for cinematic effect, but handle toggle if they insist
     if (stored === 'light') {
       setDarkMode(false);
       document.documentElement.classList.remove('dark');
@@ -42,8 +46,8 @@ export default function ClientLayout({ children }: Props) {
     }
   }, []);
 
+  // Fetch Countries
   useEffect(() => {
-    // Fetch all countries once on mount
     fetch('https://restcountries.com/v3.1/all?fields=name')
       .then(r => r.json())
       .then((data: any[]) => {
@@ -52,9 +56,10 @@ export default function ClientLayout({ children }: Props) {
           setAllCountries(names);
         }
       })
-      .catch(console.error);
+      .catch(err => console.error('Country Fetch Error:', err));
   }, []);
 
+  // City Search logic
   useEffect(() => {
     if (city.trim().length <= 1) {
       setRemoteCities([]);
@@ -63,7 +68,6 @@ export default function ClientLayout({ children }: Props) {
     }
 
     setIsCityLoading(true);
-    // Debounce open-meteo city search
     const timer = setTimeout(() => {
       const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=100&language=en&format=json`;
       fetch(url)
@@ -72,37 +76,67 @@ export default function ClientLayout({ children }: Props) {
           if (data.results) {
             let res = data.results;
             if (selectedCountry) {
-              // open-meteo returns 'country' name. We can filter if the user already picked a country
               res = res.filter((r: any) => r.country === selectedCountry);
             }
-            // Remove duplicates via Set
             const cityNames = Array.from(new Set(res.map((r: any) => r.name))) as string[];
             setRemoteCities(cityNames);
           } else {
             setRemoteCities([]);
           }
         })
-        .catch(console.error)
+        .catch(err => console.error('City Search Error:', err))
         .finally(() => setIsCityLoading(false));
     }, 150);
 
     return () => clearTimeout(timer);
   }, [city, selectedCountry]);
 
+  // Document Click handler
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target as Node)) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setShowCountrySuggestions(false);
         setShowCitySuggestions(false);
+        setShowTzSelector(false);
+        setTzSearch('');
       }
     };
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, []);
 
-  const toggleDark = () => {
-    setDarkMode((prev) => {
+  // Timezone Helpers
+  const getTimezoneStats = useCallback((tz: string) => {
+    try {
+      const now = new Date();
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now);
+      const offsetString = parts.find(p => p.type === 'timeZoneName')?.value || 'UTC+0';
+      const name = tz.split('/').pop()?.replace('_', ' ') || tz;
+      const displayOffset = offsetString.replace('GMT', 'UTC');
+
+      const match = offsetString.match(/[+-](\d+)(?::(\d+))?/);
+      let numericOffset = 0;
+      if (match) {
+        const hours = parseInt(match[1], 10);
+        const minutes = match[2] ? parseInt(match[2], 10) : 0;
+        numericOffset = (hours + minutes / 60) * (offsetString.includes('-') ? -1 : 1);
+      }
+      return { id: tz, display: `${displayOffset} ${name}`, offset: numericOffset, searchQuery: `${tz} ${displayOffset} ${name}`.toLowerCase() };
+    } catch (e) {
+      return { id: tz, display: tz, offset: 0, searchQuery: tz.toLowerCase() };
+    }
+  }, []);
+
+  const allTimezonesWithStats = useMemo(() => {
+    // Unique list of IANA zones
+    const list = Array.from(new Set((Intl as any).supportedValuesOf('timeZone') as string[]));
+    return list.map(getTimezoneStats).sort((a, b) => a.offset - b.offset);
+  }, [getTimezoneStats]);
+
+  const formatTimezone = useCallback((tz: string) => getTimezoneStats(tz).display, [getTimezoneStats]);
+
+  const toggleDark = useCallback(() => {
+    setDarkMode(prev => {
       const next = !prev;
       if (next) {
         document.documentElement.classList.add('dark');
@@ -113,7 +147,7 @@ export default function ClientLayout({ children }: Props) {
       }
       return next;
     });
-  };
+  }, []);
 
   const navLinks = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -125,20 +159,15 @@ export default function ClientLayout({ children }: Props) {
   ];
 
   return (
-    <div className="flex min-h-screen bg-white dark:bg-[#0f121b] text-gray-900 dark:text-slate-200 font-sans transition-colors duration-300">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-50 dark:bg-[#141b2a]/80 backdrop-blur-md border-r border-gray-200 dark:border-white/5 flex flex-col z-20 transition-colors duration-300 print:hidden">
-        <div className="h-16 flex items-center gap-2 px-6 border-b border-gray-200 dark:border-white/5 bg-white dark:bg-[#141b2a]/40">
+    <div className={`flex min-h-screen font-sans ${darkMode ? 'bg-[#0f121b] text-slate-200' : 'bg-white text-gray-900'}`}>
+      <aside className={`w-64 border-r flex flex-col z-20 print:hidden ${darkMode ? 'bg-[#141b2a]/80 backdrop-blur-md border-white/5' : 'bg-gray-50 border-gray-100'}`}>
+        <div className={`h-16 flex items-center gap-2 px-6 border-b ${darkMode ? 'border-white/5 bg-[#141b2a]/40' : 'bg-white border-gray-200'}`}>
           <Shield className="w-8 h-8 text-blue-500 fill-blue-500/20" />
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white flex gap-1">
-            Citilyze
-          </h1>
+          <h1 className={`text-xl font-bold tracking-tight flex gap-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Citilyze</h1>
         </div>
 
         <nav className="flex flex-col p-4 space-y-1 flex-1">
-          <div className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4 mt-2 px-3">
-            Navigation
-          </div>
+          <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest mb-4 mt-2 px-3">System Navigation</div>
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             const Icon = link.icon;
@@ -147,140 +176,74 @@ export default function ClientLayout({ children }: Props) {
                 key={link.name}
                 href={link.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${isActive
-                  ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium'
-                  : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-slate-200'
+                  ? (darkMode ? 'bg-blue-500/10 text-blue-400 font-medium' : 'bg-blue-50 text-blue-600 font-medium')
+                  : (darkMode ? 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900')
                   }`}
               >
                 <Icon className={`w-5 h-5 ${isActive ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'}`} />
-                {link.name}
+                <span className="text-sm">{link.name}</span>
               </Link>
             );
           })}
         </nav>
+        <div className="p-4 mt-auto border-t border-gray-100 dark:border-white/5">
+          <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest px-3">
+            © 2026 William C. Hernandez
+          </div>
+        </div>
       </aside>
 
-      {/* Main Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <header className="h-16 flex items-center justify-between px-6 bg-white dark:bg-[#141b2a]/80 backdrop-blur-md border-b border-gray-200 dark:border-white/5 sticky top-0 z-[2000] transition-colors duration-300 print:hidden">
+        <header className={`h-16 flex items-center justify-between px-6 sticky top-0 z-[2000] print:hidden ${darkMode ? 'bg-[#141b2a]/80 backdrop-blur-md border-white/5' : 'bg-white border-b border-gray-200'}`}>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-1 text-sm font-medium transition-colors">
-              <MapPin className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+            <div className="flex items-center gap-2 px-1 text-sm font-medium">
+              <MapPin className="w-4 h-4 text-blue-500" />
               <div className="flex items-center gap-1.5 group">
-                <span className="text-gray-400 dark:text-slate-500 text-[11px] uppercase tracking-widest font-bold">Selected City:</span>
-                <span className="text-gray-900 dark:text-white font-bold">{confirmedCity || 'UNINITIALIZED'}</span>
-                {selectedCountry && (
-                  <>
-                    <span className="text-gray-400 dark:text-slate-600">—</span>
-                    <span className="text-gray-500 dark:text-slate-500 italic font-normal">{selectedCountry}</span>
-                  </>
-                )}
+                <span className="text-gray-400 text-[10px] uppercase tracking-widest font-bold">Selected Region:</span>
+                <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{confirmedCity || 'UNRESOLVED'}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Search inputs for country / city */}
-            <div ref={wrapperRef} className="relative flex items-center space-x-3">
-              <div className="relative group">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type="text"
-                  value={country}
-                  onChange={(e) => {
-                    setCountry(e.target.value);
-                    setSelectedCountry(null);
-                    setShowCountrySuggestions(true);
-                    setShowCitySuggestions(false);
-                    setCity('');
-                  }}
-                  onFocus={() => setShowCountrySuggestions(true)}
-                  placeholder="Country..."
-                  className="pl-9 pr-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f121b] text-sm w-48 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-400"
-                />
+          <div ref={wrapperRef} className="flex items-center gap-4">
+            <CitySearch
+              country={country} city={city} setCountry={setCountry} setCity={setCity}
+              setSelectedCountry={setSelectedCountry} setConfirmedCity={setConfirmedCity}
+              allCountries={allCountries} remoteCities={remoteCities} isCityLoading={isCityLoading}
+              showCountrySuggestions={showCountrySuggestions} setShowCountrySuggestions={setShowCountrySuggestions}
+              showCitySuggestions={showCitySuggestions} setShowCitySuggestions={setShowCitySuggestions}
+              darkMode={darkMode}
+            />
 
-                {showCountrySuggestions && country.trim().length > 0 && (
-                  <ul className="absolute z-50 mt-2 w-48 max-h-60 overflow-auto bg-white dark:bg-[#141b2a] border border-gray-200 dark:border-white/10 rounded-lg shadow-xl py-1 custom-scrollbar">
-                    {allCountries
-                      .filter((c: string) => c.toLowerCase().includes(country.toLowerCase()))
-                      .slice(0, 8)
-                      .map((c: string) => (
-                        <li
-                          key={c}
-                          onClick={() => {
-                            setCountry(c);
-                            setSelectedCountry(c);
-                            setShowCountrySuggestions(false);
-                            setShowCitySuggestions(false);
-                            setCity('');
-                          }}
-                          className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer text-sm text-gray-700 dark:text-slate-300 transition-colors"
-                        >
-                          {c}
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-
-              <div className="relative group">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => {
-                    setCity(e.target.value);
-                    setShowCitySuggestions(true);
-                  }}
-                  onFocus={() => setShowCitySuggestions(true)}
-                  placeholder="City..."
-                  className="pl-9 pr-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-[#0f121b] text-sm w-48 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-400"
-                />
-
-                {showCitySuggestions && city.trim().length > 1 && (
-                  <ul className="absolute z-50 mt-2 w-48 max-h-60 overflow-auto bg-white dark:bg-[#141b2a] border border-gray-200 dark:border-white/10 rounded-lg shadow-xl py-1 custom-scrollbar">
-                    {isCityLoading ? (
-                      <li className="px-3 py-2 text-sm text-gray-400 dark:text-slate-500 italic">
-                        Searching...
-                      </li>
-                    ) : remoteCities.length > 0 ? (
-                      remoteCities.map((ct: string) => (
-                        <li
-                          key={ct}
-                          onClick={() => {
-                            setCity(ct);
-                            setConfirmedCity(ct);
-                            setShowCitySuggestions(false);
-                          }}
-                          className="px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer text-sm text-gray-700 dark:text-slate-300 transition-colors"
-                        >
-                          {ct}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="px-3 py-2 text-sm text-gray-400 dark:text-slate-500 italic">
-                        No results found
-                      </li>
-                    )}
-                  </ul>
-                )}
-              </div>
-            </div>
+            <TimezoneSelector
+              timezone={timezone} setTimezone={setTimezone}
+              showTzSelector={showTzSelector} setShowTzSelector={setShowTzSelector}
+              tzSearch={tzSearch} setTzSearch={setTzSearch}
+              allTimezonesWithStats={allTimezonesWithStats} formatTimezone={formatTimezone}
+              darkMode={darkMode}
+            />
 
             <button
               onClick={toggleDark}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-[#1e293b] hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-slate-300 transition-colors border border-transparent dark:border-white/5"
-              aria-label="Toggle dark mode"
+              className={`p-2 rounded-lg transition-all border ${darkMode ? 'bg-orange-500/10 text-orange-400 border-white/5 hover:bg-orange-500/20' : 'bg-blue-500/10 text-blue-600 border-transparent hover:bg-blue-500/20'}`}
+              aria-label="Toggle theme"
             >
-              <Monitor className="w-4 h-4" />
+              <Sun className={`w-4 h-4 ${darkMode ? 'fill-orange-400' : 'fill-none'}`} />
             </button>
           </div>
         </header>
 
-        <main className="p-6 flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-transparent transition-colors duration-300 print:p-0">
-          <LocationContext.Provider value={{ city: confirmedCity, country: selectedCountry || '' }}>
+        <main className={`p-6 flex-1 overflow-x-hidden overflow-y-auto print:p-0 print:overflow-visible ${darkMode ? 'bg-transparent text-white' : 'bg-gray-50 text-gray-900'}`}>
+          <LocationContext.Provider value={{ city: confirmedCity, country: selectedCountry || '', timezone }}>
             {children}
           </LocationContext.Provider>
+
+          {/* Global Centered Footer (Always visible on screen, hidden on PDF) */}
+          <footer className="mt-8 pb-4 text-center print:hidden">
+            <div className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+              © 2026 William C. Hernandez
+            </div>
+          </footer>
         </main>
       </div>
     </div>

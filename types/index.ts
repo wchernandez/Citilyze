@@ -5,10 +5,35 @@
 
 export type AlertLevel = 'low' | 'medium' | 'high';
 
-export interface Alert {
-  id: number;
+export interface MunicipalAlert {
+  id: string | number;
+  level: 'high' | 'medium';
   message: string;
-  level: AlertLevel;
+  description: string;
+  agency: string;
+  status: string;
+  created: string;
+}
+
+export interface MapRisk {
+  id: string | number;
+  lat: number;
+  lng: number;
+  location: string;
+  category: string;
+  score: number;
+}
+
+export interface CityData {
+  totalComplaints: number;
+  pendingComplaints: number;
+  stabilityVal: number;
+  integrityVal: number;
+  seriousCount: number;
+  mapRisks: MapRisk[];
+  sentimentData: any[];
+  varianceData: any[];
+  alerts: MunicipalAlert[];
 }
 
 export interface TrendPoint {
